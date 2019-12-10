@@ -12,49 +12,77 @@ library(missForest)
 
 ## Introduce NAs in the dataset 
 
-#Adjust above with start datetime 16/12/2006;17:24:00 and end datetime 26/11/2010;21:02:00 -- THIAGO'S CODE
-#energy.NA <- energy %>% 
-  #complete(Year, nesting(Month, Week, Day, Hour, Minute)) %>% 
-  #mutate(Date = paste(Year, Month, Day)) 
-
 reg.timeser <- seq.POSIXt(as.POSIXct("2007-01-01 00:00:00", tz = "CET"), 
                           as.POSIXct("2009-12-31 23:59:00", tz = "CET"), by = "1 min")
 
 reg.timeser <- data.frame(reg.timeser)
-
 colnames(reg.timeser) <- "DateTime"
 
-#missing_minutes<- RegularTimeSeries[!RegularTimeSeries %in% allYears$DateTime]
+################################################
+
+## Merge energy dataset with full time stamps -- 2007-2009
 
 energy.merged <- merge(energy, reg.timeser, by = "DateTime", all = TRUE)
 
-#Overall energy dataset
-statsNA(energy.ts)
-plotNA.distribution(energy.ts)
+#Re-create Min:Year columns to get rid of extra NAs
+energy.merged <- energy.merged[-c(2:7)] #Remove original times tamps 
+energy.merged$Year <- year(energy.merged$DateTime)
+energy.merged$Month <- month(energy.merged$DateTime)
+energy.merged$Week <- week(energy.merged$DateTime)
+energy.merged$Day <- weekdays(energy.merged$DateTime, abbreviate = TRUE)
+energy.merged$Hour <- hour(energy.merged$DateTime)
+energy.merged$Minute <- minute(energy.merged$DateTime)
 
-#Create TS object
-energy.ts1 <- ts(energy.merged$Sub_metering_1, frequency = 525620, start = c(2007,1))
-energy.ts2 <- ts(energy.merged$Sub_metering_2, frequency = 525620, start = c(2007,1))
-energy.ts3 <- ts(energy.merged$Sub_metering_3, frequency = 525620, start = c(2007,1))
+#Re-order columns
+energy.merged <- energy.merged[, c(1, 10, 9, 8, 7, 6, 5, 2:4)]
+
+#I have no idea how to remove the 180 NAs which arise from time changes 
+#So, I used na.omit()
+for (i in 1:seq_along(energy.merged)) {
+  #energy.merged[[i]][energy.merged[[i]] %in% NA] <- 
+    energy.merged[[i]][is.na(reg.timeser[[i]])] <- energy.merged[[i]]
+  }
+
+energy.merged <- na.omit(energy.merged)
+
+energy.merged$Day <- factor(energy.merged$Day, levels = c("Mon", "Tue", "Wed",
+                                            "Thu", "Fri", "Sat",
+                                            "Sun"))
+
+################################################
 
 #Impute missing values for the 3 sub-meters 
-impute.ts1 <- na_interpolation(energy.ts1, option = "spline")
-impute.ts2 <- na_interpolation(energy.ts2, option = "spline")
-impute.ts3 <- na_interpolation(energy.ts3, option = "spline")
-  
-  
-  
-  
+energy.merged$Sub_metering_1 <- na_interpolation(energy.merged$Sub_metering_1, option = "spline")
+energy.merged$Sub_metering_2 <- na_interpolation(energy.merged$Sub_metering_2, option = "spline")
+energy.merged$Sub_metering_3 <- na_interpolation(energy.merged$Sub_metering_3, option = "spline")
 
+################################################
 
+## Weekly avg sub-meter reading 
 
+weekly.meter <- weekly.grouping(energy.merged)
+energy.merged.weekly.sub1 <- data.frame(weekly.meter$sub1)
+energy.merged.weekly.sub2 <- data.frame(weekly.meter$sub2)
+energy.merged.weekly.sub3 <- data.frame(weekly.meter$sub3)
 
+## Monthly avg sub-meter reading 
 
+monthly.meter <- monthly.grouping(energy.merged)
+energy.merged.monthly.sub1 <- data.frame(monthly.meter$sub1)
+energy.merged.monthly.sub2 <- data.frame(monthly.meter$sub2)
+energy.merged.monthly.sub3 <- data.frame(monthly.meter$sub3)
 
+################################################
 
+## Time series analysis 
 
+#Weekly
+sub1.ts <- time.series.analysis(energy.merged.weekly.sub1$avg.sub1)
+sub2.ts <- time.series.analysis(energy.merged.weekly.sub2$avg.sub2)
+sub3.ts <- time.series.analysis(energy.merged.weekly.sub3$avg.sub3)
 
-
-
-
+#Monthly
+sub1.ts.monthly <- time.series.analysis(energy.merged.monthly.sub1$avg.sub1)
+sub2.ts.monthly <- time.series.analysis(energy.merged.monthly.sub1$avg.sub1)
+sub3.ts.monthly <- time.series.analysis(energy.merged.monthly.sub3$avg.sub3)
 
