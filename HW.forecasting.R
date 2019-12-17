@@ -3,12 +3,15 @@
 ## Set working directory 
 setwd("/Users/Iva/Desktop/Data Analytics & Machine Learning/R/IoT Analytics")
 
+library(forecast)
+
 ################################################
 
 #Impute missing values for the 3 sub-meters 
 energy.merged$Sub_metering_1 <- na_interpolation(energy.merged$Sub_metering_1, option = "spline")
 energy.merged$Sub_metering_2 <- na_interpolation(energy.merged$Sub_metering_2, option = "spline")
 energy.merged$Sub_metering_3 <- na_interpolation(energy.merged$Sub_metering_3, option = "spline")
+energy.merged$Global_active_power <- na_interpolation(energy.merged$Global_active_power, option = "spline")
 
 ################################################
 
@@ -39,3 +42,16 @@ sub3.ts <- time.series.analysis(energy.merged.weekly.sub3$avg.sub3)
 sub1.ts.monthly <- time.series.analysis(energy.merged.monthly.sub1$avg.sub1)
 sub2.ts.monthly <- time.series.analysis(energy.merged.monthly.sub1$avg.sub1)
 sub3.ts.monthly <- time.series.analysis(energy.merged.monthly.sub3$avg.sub3)
+
+################################################
+
+## HW forecasting 
+
+#Weekly
+sub1.hw <- HW.analysis(energy.merged.weekly.sub1$avg.sub1)
+sub2.hw <- HW.analysis(energy.merged.weekly.sub2$avg.sub2)
+sub3.hw <- HW.analysis(energy.merged.weekly.sub3$avg.sub3)
+
+sub1.hw.ets <- ets(energy.merged.monthly.sub1$avg.sub1)
+autoplot(forecast(sub1.hw.ets))
+
